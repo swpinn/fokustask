@@ -1,24 +1,70 @@
-﻿import { useState } from "react";
+import { useState, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { DEMO_MODE } from "../firebase";
+
+// ── Rate limiting config ───────────────────────────────────────────────────
+const MAX_ATTEMPTS  = 5;   // maks percobaan login gagal
+const LOCKOUT_MS    = 30 * 1000; // lockout 30 detik
 
 export default function Login() {
   const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [error,    setError]    = useState("");
+  const [loading,  setLoading]  = useState(false);
 
+  // ── Rate limiting state ────────────────────────────────────────────────────
+  const attemptsRef  = useRef(0);
+  const lockedUntil  = useRef(null);
+  const [lockRemain, setLockRemain] = useState(0); // detik sisa cooldown
+
+  // Hitung sisa waktu lockout secara real-time
+  const startCountdown = (until) => {
+    const tick = () => {
+      const remain = Math.ceil((until - Date.now()) / 1000);
+      if (remain <= 0) {
+        setLockRemain(0);
+        attemptsRef.current = 0;
+        lockedUntil.current = null;
+        return;
+      }
+      setLockRemain(remain);
+      setTimeout(tick, 1000);
+    };
+    tick();
+  };
+
+  const isLockedOut = () => {
+    if (!lockedUntil.current) return false;
+    if (Date.now() >= lockedUntil.current) {
+      lockedUntil.current = null;
+      attemptsRef.current = 0;
+      return false;
+    }
+    return true;
+  };
+
+  const recordFailedAttempt = () => {
+    attemptsRef.current += 1;
+    if (attemptsRef.current >= MAX_ATTEMPTS) {
+      const until = Date.now() + LOCKOUT_MS;
+      lockedUntil.current = until;
+      startCountdown(until);
+    }
+  };
+
+  // ── Handlers ───────────────────────────────────────────────────────────────
   const handleGoogle = async () => {
+    if (isLockedOut()) return;
     setError("");
     setLoading(true);
     try {
       await signInWithGoogle();
       navigate("/");
     } catch (e) {
+      recordFailedAttempt();
       setError("Gagal login dengan Google. Coba lagi.");
     }
     setLoading(false);
@@ -26,6 +72,7 @@ export default function Login() {
 
   const handleEmail = async (e) => {
     e.preventDefault();
+    if (isLockedOut()) return;
     setError("");
     setLoading(true);
     try {
@@ -35,24 +82,22 @@ export default function Login() {
         await signInWithEmail(email, password);
       }
       navigate("/");
-    } catch (e) {
+    } catch (err) {
+      recordFailedAttempt();
       setError(
-        e.code === "auth/wrong-password" ? "Password salah." :
-        e.code === "auth/user-not-found" ? "Email tidak ditemukan." :
-        e.code === "auth/email-already-in-use" ? "Email sudah terdaftar." :
-        e.code === "auth/weak-password" ? "Password terlalu lemah (min 6 karakter)." :
+        err.code === "auth/wrong-password"      ? "Password salah." :
+        err.code === "auth/user-not-found"      ? "Email tidak ditemukan." :
+        err.code === "auth/email-already-in-use"? "Email sudah terdaftar." :
+        err.code === "auth/weak-password"       ? "Password terlalu lemah (min 6 karakter)." :
+        err.code === "auth/invalid-email"       ? "Format email tidak valid." :
+        err.code === "auth/too-many-requests"   ? "Terlalu banyak percobaan. Coba lagi nanti." :
         "Terjadi kesalahan. Coba lagi."
       );
     }
     setLoading(false);
   };
 
-  const handleDemo = async () => {
-    setLoading(true);
-    await signInWithEmail("demo@focustask.app", "demo123");
-    navigate("/");
-    setLoading(false);
-  };
+  const locked = lockRemain > 0;
 
   return (
     <div className="min-h-screen bg-[#f7faf9] flex items-center justify-center p-4">
@@ -66,11 +111,21 @@ export default function Login() {
           <p className="text-sm text-[#5b5f5f]">Stay focused. Get things done.</p>
         </div>
 
-        {/* Demo Mode Banner */}
-        {DEMO_MODE && (
-          <div className="bg-[#b0efe5]/50 border border-[#94d2c9] rounded-xl p-3 mb-4 text-center">
-            <p className="text-xs font-semibold text-[#26665f]">⚡ Mode Demo — data tersimpan di browser ini</p>
-            <p className="text-xs text-[#5b5f5f] mt-0.5">Hubungkan Firebase untuk sync multi-device</p>
+        {/* Rate limit warning */}
+        {attemptsRef.current > 0 && attemptsRef.current < MAX_ATTEMPTS && !locked && (
+          <div className="bg-[#fff3e0] border border-[#ffb74d] rounded-xl p-3 mb-4 text-center">
+            <p className="text-xs font-semibold text-[#e65100]">
+              ⚠️ {MAX_ATTEMPTS - attemptsRef.current} percobaan tersisa sebelum akun sementara dikunci
+            </p>
+          </div>
+        )}
+
+        {/* Lockout banner */}
+        {locked && (
+          <div className="bg-[#ffdad6] border border-[#ba1a1a] rounded-xl p-3 mb-4 text-center">
+            <p className="text-xs font-semibold text-[#ba1a1a]">
+              🔒 Terlalu banyak percobaan gagal. Coba lagi dalam {lockRemain} detik.
+            </p>
           </div>
         )}
 
@@ -83,8 +138,8 @@ export default function Login() {
           {/* Google Button */}
           <button
             onClick={handleGoogle}
-            disabled={loading}
-            className="w-full h-11 rounded-full border border-[#dee4e3] flex items-center justify-center gap-3 text-sm font-semibold text-[#181c1c] hover:bg-[#f1f4f4] transition-colors mb-3 disabled:opacity-50"
+            disabled={loading || locked}
+            className="w-full h-11 rounded-full border border-[#dee4e3] flex items-center justify-center gap-3 text-sm font-semibold text-[#181c1c] hover:bg-[#f1f4f4] transition-colors mb-3 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
               <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
@@ -92,19 +147,8 @@ export default function Login() {
               <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
               <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
             </svg>
-            {DEMO_MODE ? "Demo — Login dengan Google" : "Lanjutkan dengan Google"}
+            Lanjutkan dengan Google
           </button>
-
-          {DEMO_MODE && (
-            <button
-              onClick={handleDemo}
-              disabled={loading}
-              className="w-full h-11 rounded-full bg-[#b0efe5] text-[#00201d] font-semibold text-sm hover:bg-[#94d2c9] transition-colors mb-3 disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              <span className="material-symbols-outlined text-[18px]">play_arrow</span>
-              Coba Demo Sekarang
-            </button>
-          )}
 
           <div className="flex items-center gap-3 mb-4">
             <div className="flex-1 h-px bg-[#dee4e3]" />
@@ -120,7 +164,8 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full border border-[#dee4e3] rounded-xl px-4 py-2.5 text-sm text-[#181c1c] focus:outline-none focus:border-[#26665f] transition-colors"
+                disabled={locked}
+                className="w-full border border-[#dee4e3] rounded-xl px-4 py-2.5 text-sm text-[#181c1c] focus:outline-none focus:border-[#26665f] transition-colors disabled:opacity-50 disabled:bg-[#f1f4f4]"
                 placeholder="email@contoh.com"
               />
             </div>
@@ -132,7 +177,8 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
-                className="w-full border border-[#dee4e3] rounded-xl px-4 py-2.5 text-sm text-[#181c1c] focus:outline-none focus:border-[#26665f] transition-colors"
+                disabled={locked}
+                className="w-full border border-[#dee4e3] rounded-xl px-4 py-2.5 text-sm text-[#181c1c] focus:outline-none focus:border-[#26665f] transition-colors disabled:opacity-50 disabled:bg-[#f1f4f4]"
                 placeholder="Minimal 6 karakter"
               />
             </div>
@@ -141,10 +187,12 @@ export default function Login() {
             )}
             <button
               type="submit"
-              disabled={loading}
-              className="w-full h-11 rounded-full bg-[#26665f] text-white font-semibold text-sm hover:bg-[#296861] transition-colors shadow-md disabled:opacity-50"
+              disabled={loading || locked}
+              className="w-full h-11 rounded-full bg-[#26665f] text-white font-semibold text-sm hover:bg-[#296861] transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Loading..." : isSignUp ? "Buat Akun" : "Masuk"}
+              {locked   ? `🔒 Terkunci ${lockRemain}s` :
+               loading  ? "Loading..." :
+               isSignUp ? "Buat Akun" : "Masuk"}
             </button>
           </form>
 

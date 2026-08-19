@@ -3,31 +3,13 @@ import {
   collection, addDoc, updateDoc, deleteDoc, doc,
   onSnapshot, query, where, serverTimestamp,
 } from "firebase/firestore";
-import { db, DEMO_MODE } from "../firebase";
+import { db } from "../firebase";
 import { useAuth } from "./AuthContext";
-import { format, isToday, parseISO, differenceInCalendarDays } from "date-fns";
+import { format, parseISO, differenceInCalendarDays } from "date-fns";
 
 const TaskContext = createContext(null);
-const STORAGE_KEY  = "focustask_tasks";
-const loadLocal    = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); } catch { return []; } };
-const saveLocal    = (tasks) => localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
 
 const TODAY = format(new Date(), "yyyy-MM-dd");
-
-/**
- * Hitung apakah streak dilanjutkan atau putus.
- * lastCompletedDate: "yyyy-MM-dd" string
- * streak: angka streak saat ini
- */
-function computeNewStreak(lastCompletedDate, currentStreak) {
-  if (!lastCompletedDate) return currentStreak;
-  const diff = differenceInCalendarDays(new Date(), parseISO(lastCompletedDate));
-  // diff=0 berarti hari ini sudah selesai (tidak normalnya dipanggil sini)
-  // diff=1 berarti kemarin selesai → streak lanjut
-  // diff>1 berarti ada hari yang terlewat → streak putus
-  if (diff <= 1) return currentStreak;
-  return 0; // putus
-}
 
 export function TaskProvider({ children }) {
   const { currentUser } = useAuth();
@@ -37,12 +19,6 @@ export function TaskProvider({ children }) {
 
   // ── Subscribe + reset harian ──────────────────────────────────────────────
   useEffect(() => {
-    if (DEMO_MODE) {
-      const local = loadLocal();
-      setTasks(applyDailyReset(local));
-      setLoading(false);
-      return;
-    }
     if (!currentUser) { setTasks([]); setLoading(false); return; }
 
     const q = query(collection(db, "tasks"), where("uid", "==", currentUser.uid));
@@ -77,21 +53,15 @@ export function TaskProvider({ children }) {
       if (lastReset === TODAY) return task; // sudah di-reset hari ini
 
       // Perlu reset
-      const wasCompleted   = task.completed === true;
-      const lastCompleted  = task.lastCompletedDate || null;
+      const wasCompleted  = task.completed === true;
+      const lastCompleted = task.lastCompletedDate || null;
 
       // Hitung streak baru
       let newStreak = task.streak ?? 0;
       if (wasCompleted) {
-        // Selesai kemarin → lanjut streak
         newStreak = (task.streak ?? 0) + 1;
       } else {
-        // Tidak selesai → cek apakah baru putus atau memang belum pernah
-        if (lastReset) {
-          // Ada riwayat reset tapi tidak selesai → putus
-          newStreak = 0;
-        }
-        // Jika belum pernah reset sama sekali, biarkan streak tetap 0
+        if (lastReset) newStreak = 0;
       }
 
       const updated = {
@@ -127,25 +97,20 @@ export function TaskProvider({ children }) {
     const extra = taskData.isDaily
       ? { streak: 0, lastResetDate: TODAY, lastCompletedDate: null, failedYesterday: false }
       : {};
-
-    if (DEMO_MODE) {
-      const t = { ...taskData, ...extra, id: crypto.randomUUID(), uid: "demo-user-123", completed: false, order: maxOrder, createdAt: new Date().toISOString() };
-      const u = [...tasks, t]; setTasks(u); saveLocal(u); return;
-    }
-    await addDoc(collection(db, "tasks"), { ...taskData, ...extra, uid: currentUser.uid, completed: false, order: maxOrder, createdAt: serverTimestamp() });
+    await addDoc(collection(db, "tasks"), {
+      ...taskData, ...extra,
+      uid: currentUser.uid,
+      completed: false,
+      order: maxOrder,
+      createdAt: serverTimestamp(),
+    });
   };
 
   const updateTask = async (id, data) => {
-    if (DEMO_MODE) {
-      const u = tasks.map((t) => t.id === id ? { ...t, ...data } : t); setTasks(u); saveLocal(u); return;
-    }
     await updateDoc(doc(db, "tasks", id), data);
   };
 
   const deleteTask = async (id) => {
-    if (DEMO_MODE) {
-      const u = tasks.filter((t) => t.id !== id); setTasks(u); saveLocal(u); return;
-    }
     await deleteDoc(doc(db, "tasks", id));
   };
 
@@ -153,15 +118,12 @@ export function TaskProvider({ children }) {
     const task = tasks.find((t) => t.id === id);
     if (!task) return;
     const nowCompleted = !task.completed;
-    const extra = task.isDaily && nowCompleted
-      ? { lastCompletedDate: TODAY }
-      : {};
+    const extra = task.isDaily && nowCompleted ? { lastCompletedDate: TODAY } : {};
     await updateTask(id, { completed: nowCompleted, ...extra });
   };
 
   const reorderTasks = async (reordered) => {
     setTasks(reordered);
-    if (DEMO_MODE) { saveLocal(reordered); return; }
     await Promise.all(reordered.map((t, i) => updateDoc(doc(db, "tasks", t.id), { order: i })));
   };
 

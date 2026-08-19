@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Tasks ────────────────────────────────────────────────────────────────
+    // Hanya user yang login dan memiliki task tersebut yang boleh akses
+    match /tasks/{taskId} {
+      // Baca: hanya jika uid task sama dengan uid user yang login
+      allow read: if request.auth != null
+                  && resource.data.uid == request.auth.uid;
+
+      // Buat task baru: uid yang dikirim harus sama dengan uid yang login
+      allow create: if request.auth != null
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.keys().hasAll(["uid", "title", "completed"]);
+
+      // Update task: hanya pemilik, dan tidak boleh ganti uid
+      allow update: if request.auth != null
+                    && resource.data.uid == request.auth.uid
+                    && request.resource.data.uid == request.auth.uid;
+
+      // Hapus task: hanya pemilik
+      allow delete: if request.auth != null
+                    && resource.data.uid == request.auth.uid;
+    }
+
+    // Tolak semua koleksi lain yang tidak terdefinisi
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
