@@ -1,6 +1,6 @@
 ﻿# FocusTask ✅
 
-> A beautiful, multi-device to-do list app built with React + Firebase.
+> A beautiful to-do list app built with React + Firebase.
 
 ![FocusTask Preview](https://img.shields.io/badge/Status-Active-26665f?style=for-the-badge)
 ![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react)
@@ -88,7 +88,3 @@ npm run dev
 2. Buka [vercel.com](https://vercel.com) → Import Git Repository
 3. Tambahkan Environment Variables (sama dengan isi `.env`)
 4. Deploy!
-
-## License
-
-MIT
