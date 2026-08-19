@@ -1,10 +1,19 @@
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 // ── Rate limiting config ───────────────────────────────────────────────────
-const MAX_ATTEMPTS  = 5;   // maks percobaan login gagal
-const LOCKOUT_MS    = 30 * 1000; // lockout 30 detik
+const MAX_ATTEMPTS = 5;        // maks percobaan login gagal
+const LOCKOUT_MS   = 30 * 1000; // lockout 30 detik
+const SS_ATTEMPTS  = "ft_login_attempts";
+const SS_LOCKED    = "ft_login_locked_until";
+
+// ── Helpers sessionStorage ─────────────────────────────────────────────────
+const getAttempts   = () => parseInt(sessionStorage.getItem(SS_ATTEMPTS)  || "0", 10);
+const getLockedUntil= () => parseInt(sessionStorage.getItem(SS_LOCKED)    || "0", 10);
+const setAttempts   = (n) => sessionStorage.setItem(SS_ATTEMPTS, String(n));
+const setLockedUntil= (ts)=> sessionStorage.setItem(SS_LOCKED, String(ts));
+const clearRateLimit= ()  => { sessionStorage.removeItem(SS_ATTEMPTS); sessionStorage.removeItem(SS_LOCKED); };
 
 export default function Login() {
   const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
@@ -15,10 +24,23 @@ export default function Login() {
   const [error,    setError]    = useState("");
   const [loading,  setLoading]  = useState(false);
 
-  // ── Rate limiting state ────────────────────────────────────────────────────
-  const attemptsRef  = useRef(0);
-  const lockedUntil  = useRef(null);
-  const [lockRemain, setLockRemain] = useState(0); // detik sisa cooldown
+  // ── Rate limiting state — dibaca dari sessionStorage saat mount ────────────
+  const [attempts,   setAttemptsState] = useState(() => getAttempts());
+  const [lockRemain, setLockRemain]    = useState(0);
+  const tickRef = useRef(null);
+
+  // Jalankan countdown jika masih terkunci saat halaman dimuat/di-refresh
+  useEffect(() => {
+    const until = getLockedUntil();
+    if (until && Date.now() < until) {
+      startCountdown(until);
+    } else if (until) {
+      // Lockout sudah kedaluwarsa, bersihkan
+      clearRateLimit();
+      setAttemptsState(0);
+    }
+    return () => clearTimeout(tickRef.current);
+  }, []);
 
   // Hitung sisa waktu lockout secara real-time
   const startCountdown = (until) => {
@@ -26,31 +48,34 @@ export default function Login() {
       const remain = Math.ceil((until - Date.now()) / 1000);
       if (remain <= 0) {
         setLockRemain(0);
-        attemptsRef.current = 0;
-        lockedUntil.current = null;
+        clearRateLimit();
+        setAttemptsState(0);
         return;
       }
       setLockRemain(remain);
-      setTimeout(tick, 1000);
+      tickRef.current = setTimeout(tick, 1000);
     };
     tick();
   };
 
   const isLockedOut = () => {
-    if (!lockedUntil.current) return false;
-    if (Date.now() >= lockedUntil.current) {
-      lockedUntil.current = null;
-      attemptsRef.current = 0;
+    const until = getLockedUntil();
+    if (!until) return false;
+    if (Date.now() >= until) {
+      clearRateLimit();
+      setAttemptsState(0);
       return false;
     }
     return true;
   };
 
   const recordFailedAttempt = () => {
-    attemptsRef.current += 1;
-    if (attemptsRef.current >= MAX_ATTEMPTS) {
+    const next = getAttempts() + 1;
+    setAttempts(next);
+    setAttemptsState(next);
+    if (next >= MAX_ATTEMPTS) {
       const until = Date.now() + LOCKOUT_MS;
-      lockedUntil.current = until;
+      setLockedUntil(until);
       startCountdown(until);
     }
   };
@@ -112,10 +137,10 @@ export default function Login() {
         </div>
 
         {/* Rate limit warning */}
-        {attemptsRef.current > 0 && attemptsRef.current < MAX_ATTEMPTS && !locked && (
+        {attempts > 0 && attempts < MAX_ATTEMPTS && !locked && (
           <div className="bg-[#fff3e0] border border-[#ffb74d] rounded-xl p-3 mb-4 text-center">
             <p className="text-xs font-semibold text-[#e65100]">
-              ⚠️ {MAX_ATTEMPTS - attemptsRef.current} percobaan tersisa sebelum akun sementara dikunci
+              ⚠️ {MAX_ATTEMPTS - attempts} percobaan tersisa sebelum akun sementara dikunci
             </p>
           </div>
         )}
