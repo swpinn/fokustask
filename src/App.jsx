@@ -1,4 +1,4 @@
-﻿import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { TaskProvider } from "./contexts/TaskContext";
 import SidebarDesktop from "./components/layout/SidebarDesktop";
@@ -6,6 +6,7 @@ import Dashboard from "./pages/Dashboard";
 import Calendar from "./pages/Calendar";
 import Statistics from "./pages/Statistics";
 import Login from "./pages/Login";
+import Timer from "./pages/Timer";
 
 function ProtectedLayout() {
   const { currentUser } = useAuth();
@@ -19,6 +20,7 @@ function ProtectedLayout() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/stats" element={<Statistics />} />
+            <Route path="/timer" element={<Timer />} />
           </Routes>
         </div>
       </div>

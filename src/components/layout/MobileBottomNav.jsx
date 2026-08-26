@@ -1,10 +1,11 @@
-﻿import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 export default function MobileBottomNav() {
   const { pathname } = useLocation();
   const isToday = pathname === "/";
   const isCalendar = pathname === "/calendar";
   const isStats = pathname === "/stats";
+  const isTimer = pathname === "/timer";
 
   const navItem = (to, icon, label, active) => (
     <Link
@@ -22,6 +23,7 @@ export default function MobileBottomNav() {
     <nav className="lg:hidden bg-white border-t border-[#bfc9c6] fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 shadow-sm">
       {navItem("/", "check_circle", "Tasks", isToday)}
       {navItem("/calendar", "calendar_month", "Calendar", isCalendar)}
+      {navItem("/timer", "timer", "Timer", isTimer)}
       {navItem("/stats", "bar_chart", "Stats", isStats)}
     </nav>
   );

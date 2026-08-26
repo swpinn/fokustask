@@ -1,10 +1,11 @@
-﻿import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 export default function SidebarDesktop() {
   const { pathname } = useLocation();
   const isToday = pathname === "/";
   const isCalendar = pathname === "/calendar";
   const isStats = pathname === "/stats";
+  const isTimer = pathname === "/timer";
 
   const navItem = (to, icon, label, active) => (
     <Link
@@ -30,6 +31,7 @@ export default function SidebarDesktop() {
         {navItem("/", "today", "Today", isToday)}
         {navItem("/calendar", "calendar_month", "Calendar", isCalendar)}
         {navItem("/stats", "bar_chart", "Statistics", isStats)}
+        {navItem("/timer", "timer", "Timer", isTimer)}
       </nav>
     </aside>
   );
