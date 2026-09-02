@@ -137,6 +137,5 @@ firebase deploy --only hosting
 ```
 
 ### 6. Selesai & Akses Aplikasi
-Setelah deploy berhasil, terminal akan menampilkan URL live aplikasi Anda:
-- 🌐 **URL Utama:** [https://fokustask.web.app](https://fokustask.web.app)
-- 🌐 **URL Alternatif:** [https://fokustask.firebaseapp.com](https://fokustask.firebaseapp.com)
+Setelah deploy berhasil, terminal akan menampilkan URL live aplikasi Anda
+
