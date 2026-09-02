@@ -36,7 +36,7 @@
 ### 1. Clone & Install
 
 ```bash
-git clone https://github.com/your-username/focustask.git
+git clone https://github.com/swpinn/fokustask.git
 cd focustask
 npm install
 ```
@@ -44,7 +44,7 @@ npm install
 ### 2. Setup Firebase
 
 1. Buka [Firebase Console](https://console.firebase.google.com/)
-2. Klik **Add project** → beri nama (misal: `focustask`)
+2. Klik **Add project** → beri nama (misal: `fokustask`)
 3. Di sidebar, klik **Build > Firestore Database** → Create database → Start in production mode
 4. Di sidebar, klik **Build > Authentication** → Get started → Enable **Google** dan **Email/Password**
 5. Di sidebar, klik ⚙️ **Project settings** → **Your apps** → klik `</>` (Web)
@@ -87,10 +87,56 @@ npm run dev
 
 ## Deploy ke Firebase Hosting
 
+Berikut langkah lengkap mendeploy aplikasi ke **Firebase Hosting**:
+
+### 1. Install Firebase CLI
+Pastikan Firebase CLI sudah terinstall di komputer Anda:
 ```bash
-# Build dan deploy ke Firebase
+npm install -g firebase-tools
+```
+
+### 2. Login ke Akun Firebase
+Masuk ke akun Google/Firebase melalui terminal:
+```bash
+firebase login
+```
+*(Browser akan otomatis terbuka untuk konfirmasi otorisasi login)*
+
+### 3. Hubungkan Project Firebase
+Pastikan project yang aktif di lokal sesuai dengan Project ID di Firebase Console:
+```bash
+# Cek daftar project Anda di Firebase
+firebase projects:list
+
+# Pilih dan gunakan project yang sesuai (contoh: fokustask)
+firebase use fokustask
+```
+> **Catatan:** File `.firebaserc` di root project sudah secara default diatur ke project `fokustask`.
+
+### 4. Setup Environment Variables
+Sebelum melakukan build dan deploy, pastikan file `.env` di root project sudah terisi dengan kredensial Firebase yang benar. Variabel environment berawalan `VITE_` ini akan dibundle ke dalam build production saat proses build berjalan.
+
+### 5. Build & Deploy
+Gunakan script praktis yang sudah tersedia di `package.json`:
+
+```bash
+# Opsi 1: Build + deploy Hosting sekaligus Firestore Security Rules
 npm run deploy
 
-# Atau deploy hosting saja
+# Opsi 2: Build + deploy hanya Hosting saja
 npm run deploy:hosting
 ```
+
+Atau bisa juga dijalankan secara manual langkah demi langkah:
+```bash
+# 1. Compile bundle production ke folder dist/
+npm run build
+
+# 2. Deploy bundle ke Firebase Hosting
+firebase deploy --only hosting
+```
+
+### 6. Selesai & Akses Aplikasi
+Setelah deploy berhasil, terminal akan menampilkan URL live aplikasi Anda:
+- 🌐 **URL Utama:** [https://fokustask.web.app](https://fokustask.web.app)
+- 🌐 **URL Alternatif:** [https://fokustask.firebaseapp.com](https://fokustask.firebaseapp.com)
