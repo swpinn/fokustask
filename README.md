@@ -29,7 +29,7 @@
 - **Charts**: Chart.js via react-chartjs-2
 - **Drag & Drop**: @hello-pangea/dnd
 - **Routing**: React Router v6
-- **Deploy**: Firebase Hosting ([fokustask.web.app](https://fokustask.web.app))
+- **Deploy**: Firebase Hosting 
 
 ## Setup
 
