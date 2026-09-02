@@ -29,7 +29,7 @@
 - **Charts**: Chart.js via react-chartjs-2
 - **Drag & Drop**: @hello-pangea/dnd
 - **Routing**: React Router v6
-- **Deploy**: Firebase Hosting ([fokustask.web.app](https://fokustask.web.app)) / Vercel
+- **Deploy**: Firebase Hosting ([fokustask.web.app](https://fokustask.web.app))
 
 ## Setup
 
@@ -85,9 +85,12 @@ service cloud.firestore {
 npm run dev
 ```
 
-## Deploy ke Vercel
+## Deploy ke Firebase Hosting
 
-1. Push ke GitHub
-2. Buka [vercel.com](https://vercel.com) → Import Git Repository
-3. Tambahkan Environment Variables (sama dengan isi `.env`)
-4. Deploy!
+```bash
+# Build dan deploy ke Firebase
+npm run deploy
+
+# Atau deploy hosting saja
+npm run deploy:hosting
+```
