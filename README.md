@@ -1,7 +1,10 @@
-﻿# FocusTask ✅
+# FocusTask ✅
 
 > A beautiful to-do list app built with React + Firebase.
+> 
+> 🌐 **Live App:** [https://fokustask.web.app](https://fokustask.web.app)
 
+[![Live App](https://img.shields.io/badge/Live_App-fokustask.web.app-26665f?style=for-the-badge&logo=googlechrome&logoColor=white)](https://fokustask.web.app)
 ![FocusTask Preview](https://img.shields.io/badge/Status-Active-26665f?style=for-the-badge)
 ![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react)
 ![Firebase](https://img.shields.io/badge/Firebase-Firestore-FFCA28?style=for-the-badge&logo=firebase)
@@ -26,7 +29,7 @@
 - **Charts**: Chart.js via react-chartjs-2
 - **Drag & Drop**: @hello-pangea/dnd
 - **Routing**: React Router v6
-- **Deploy**: Vercel
+- **Deploy**: Firebase Hosting ([fokustask.web.app](https://fokustask.web.app)) / Vercel
 
 ## Setup
 
